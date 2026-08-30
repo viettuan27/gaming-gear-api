@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: gaming-gear
+  profiles:
+    default: dev
+  config:
+    import: optional:file:.env[.properties]
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
