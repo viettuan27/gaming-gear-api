@@ -9,6 +9,7 @@ public record ApiResponse<T>(
         Instant timestamp
 ) {
     public static <T> ApiResponse<T> success(T data){
+
         return new ApiResponse<>(true,"Success",data,Instant.now());
     }
     public static <T> ApiResponse<T> success (String message, T data){
