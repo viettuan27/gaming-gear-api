@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record RefreshTokenRequest(
-        @NotBlank(message = "Refresh token cant be blank")
+        @NotBlank(message = "Refresh token không được để trống")
         String refreshToken
 ) {
 }

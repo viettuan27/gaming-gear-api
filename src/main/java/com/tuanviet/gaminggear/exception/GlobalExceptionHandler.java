@@ -26,7 +26,7 @@ public class GlobalExceptionHandler {
         }
         return ResponseEntity
                 .badRequest()
-                .body(ApiResponse.error("Data invalid", errors));
+                .body(ApiResponse.error("Dữ liệu không hợp lệ", errors));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadableException(HttpMessageNotReadableException exception){
         return ResponseEntity
                 .badRequest()
-                .body(ApiResponse.error("JSON request khong hop le"));
+                .body(ApiResponse.error("Nội dung JSON không hợp lệ"));
     }
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ApiResponse<Void>> handleBadRequestException(
