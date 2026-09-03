@@ -48,7 +48,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         Role customerRole = roleRepository.findByName(RoleName.CUSTOMER)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy role CUSTOMER"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy quyền CUSTOMER"));
 
         User user = new User();
         user.setEmail(email);

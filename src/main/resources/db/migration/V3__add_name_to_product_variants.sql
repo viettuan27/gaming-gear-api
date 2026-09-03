@@ -1,0 +1,2 @@
+ALTER TABLE product_variants
+ADD COLUMN name VARCHAR(150) NOT NULL;
