@@ -38,7 +38,7 @@ public class ProductController {
     @GetMapping("/api/v1/products/{id}")
     public ResponseEntity<ApiResponse<ProductDetailsResponse>> getDetails(@PathVariable Long id){
         return ResponseEntity.ok()
-                .body(ApiResponse.success("Chi tiet san pham",productService.getDetail(id)));
+                .body(ApiResponse.success("Chi tiết sản phẩm",productService.getDetail(id)));
     }
     @GetMapping("/api/v1/products")
     public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> getAllProducts(

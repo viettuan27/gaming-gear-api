@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -69,9 +68,9 @@ public class ProductServiceImpl implements ProductService {
     @Transactional(readOnly = true)
     public ProductDetailsResponse getDetail(Long id) {
         Product product = productRepository.findByIdAndActiveTrue(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay san pham"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
         if(!product.getCategory().isActive() || !product.getBrand().isActive()){
-            throw new ResourceNotFoundException("San pham khong kha dung");
+            throw new ResourceNotFoundException("Sản phẩm không khả dụng");
         }
 
         List<ProductVariantResponse> variants = productVariantRepository
