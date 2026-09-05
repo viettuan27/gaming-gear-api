@@ -1,5 +1,6 @@
 package com.tuanviet.gaminggear.dto.request;
 
+import com.tuanviet.gaminggear.validator.PhoneNumber;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -13,7 +14,7 @@ public record RegisterRequest(
         @NotBlank(message = "Tên không được để trống")
         String fullName,
 
-        @Size(max = 11,message = "Số điện thoại không hợp lệ")
+        @PhoneNumber
         String phone,
 
         @NotBlank(message = "Mật khẩu không được để trống")
