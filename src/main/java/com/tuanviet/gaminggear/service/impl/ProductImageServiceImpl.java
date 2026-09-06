@@ -10,6 +10,7 @@ import com.tuanviet.gaminggear.repository.ProductImageRepository;
 import com.tuanviet.gaminggear.repository.ProductRepository;
 import com.tuanviet.gaminggear.service.ProductImageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ public class ProductImageServiceImpl implements ProductImageService {
     private final ProductImageMapper productImageMapper;
 
     @Override
+    @CacheEvict(cacheNames = "product-detail",allEntries = true)
     public ProductImageResponse create(Long productId, ProductImageRequest request) {
         Product product = getProductById(productId);
 
@@ -35,6 +37,7 @@ public class ProductImageServiceImpl implements ProductImageService {
     }
 
     @Override
+    @CacheEvict(cacheNames = "product-detail",allEntries = true)
     public ProductImageResponse update(Long imageId, ProductImageRequest request) {
         ProductImage productImage = getProductImageById(imageId);
         productImage.setImageUrl(request.imageUrl().trim());
@@ -44,6 +47,7 @@ public class ProductImageServiceImpl implements ProductImageService {
     }
 
     @Override
+    @CacheEvict(cacheNames = "product-detail",allEntries = true)
     public void delete(Long imageId) {
         productImageRepository.delete(getProductImageById(imageId));
     }

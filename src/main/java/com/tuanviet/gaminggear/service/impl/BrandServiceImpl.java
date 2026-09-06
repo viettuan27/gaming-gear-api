@@ -9,6 +9,8 @@ import com.tuanviet.gaminggear.mapper.BrandMapper;
 import com.tuanviet.gaminggear.repository.BrandRepository;
 import com.tuanviet.gaminggear.service.BrandService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +25,7 @@ public class BrandServiceImpl implements BrandService {
     private final BrandMapper brandMapper;
 
     @Override
+    @CacheEvict(cacheNames = {"categories","brands","product-list","product-detail"}, allEntries = true)
     public BrandResponse create(BrandRequest request) {
         String name = request.name().trim();
         if(brandRepository.existsByNameIgnoreCase(name)){
@@ -37,6 +40,7 @@ public class BrandServiceImpl implements BrandService {
     }
 
     @Override
+    @CacheEvict(cacheNames = {"categories","brands","product-list","product-detail"}, allEntries = true)
     public BrandResponse update(Long id, BrandRequest request) {
         String name = request.name().trim();
         Brand brand = getBrandById(id);
@@ -50,8 +54,8 @@ public class BrandServiceImpl implements BrandService {
         return brandMapper.toResponse(brandRepository.save(brand));
     }
 
-    @Transactional(readOnly = true)
     @Override
+    @Transactional(readOnly = true)
     public List<BrandResponse> getAll() {
         return brandRepository.findAll()
                 .stream()
@@ -59,8 +63,9 @@ public class BrandServiceImpl implements BrandService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
     @Override
+    @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "brands")
     public List<BrandResponse> getAllActive() {
         return brandRepository.findByActiveTrueOrderByNameAsc()
                 .stream()

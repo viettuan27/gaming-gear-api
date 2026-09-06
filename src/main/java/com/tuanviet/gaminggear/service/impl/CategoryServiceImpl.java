@@ -9,6 +9,8 @@ import com.tuanviet.gaminggear.mapper.CategoryMapper;
 import com.tuanviet.gaminggear.repository.CategoryRepository;
 import com.tuanviet.gaminggear.service.CategoryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +25,7 @@ public class CategoryServiceImpl implements CategoryService {
     private final CategoryMapper categoryMapper;
 
     @Override
+    @CacheEvict(cacheNames = {"categories","brands","product-list","product-detail"}, allEntries = true)
     public CategoryResponse create(CategoryRequest request) {
         String name = request.name().trim();
         if(categoryRepository.existsByNameIgnoreCase(name)){
@@ -38,6 +41,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @CacheEvict(cacheNames = {"categories","brands","product-list","product-detail"}, allEntries = true)
     public CategoryResponse update(Long id, CategoryRequest request) {
         String name = request.name().trim();
         Category category = getCategoryById(id);
@@ -53,6 +57,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "categories")
     public List<CategoryResponse> getAllActive() {
         return categoryRepository.findByActiveTrueOrderByNameAsc()
                 .stream()
