@@ -11,6 +11,7 @@ import com.tuanviet.gaminggear.repository.ProductRepository;
 import com.tuanviet.gaminggear.repository.ProductVariantRepository;
 import com.tuanviet.gaminggear.service.ProductVariantService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,7 @@ public class ProductVariantServiceImpl implements ProductVariantService {
     private final ProductVariantMapper productVariantMapper;
 
     @Override
+    @CacheEvict(cacheNames = "product-detail",allEntries = true)
     public ProductVariantResponse create(Long productId,ProductVariantRequest request) {
         Product product = getProductById(productId);
         String sku = request.sku().trim().toUpperCase();
@@ -44,6 +46,7 @@ public class ProductVariantServiceImpl implements ProductVariantService {
     }
 
     @Override
+    @CacheEvict(cacheNames = "product-detail",allEntries = true)
     public ProductVariantResponse update(Long variantId, ProductVariantRequest request) {
         ProductVariant productVariant = getProductVariantById(variantId);
         String sku = request.sku().trim().toUpperCase();

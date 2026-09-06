@@ -12,6 +12,8 @@ import com.tuanviet.gaminggear.mapper.ProductVariantMapper;
 import com.tuanviet.gaminggear.repository.*;
 import com.tuanviet.gaminggear.service.ProductService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +38,7 @@ public class ProductServiceImpl implements ProductService {
     private final ProductImageMapper productImageMapper;
 
     @Override
+    @CacheEvict(cacheNames = {"product-list","product-detail"},allEntries = true)
     public ProductResponse create(ProductRequest request) {
         Category category = getCategoryById(request.categoryId());
         Brand brand = getBrandById(request.brandId());
@@ -51,6 +54,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @CacheEvict(cacheNames = {"product-list","product-detail"},allEntries = true)
     public ProductResponse update(Long id, ProductRequest request) {
         Product product = getProductById(id);
         Category category = getCategoryById(request.categoryId());
@@ -66,6 +70,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "product-detail",key = "#id")
     public ProductDetailsResponse getDetail(Long id) {
         Product product = productRepository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
@@ -99,6 +104,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "product-list")
     public PageResponse<ProductResponse> getAllProducts(
             Long categoryId,
             Long brandId,

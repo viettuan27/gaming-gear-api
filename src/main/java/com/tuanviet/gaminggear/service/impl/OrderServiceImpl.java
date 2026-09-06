@@ -20,6 +20,7 @@ import com.tuanviet.gaminggear.repository.CartRepository;
 import com.tuanviet.gaminggear.repository.OrderRepository;
 import com.tuanviet.gaminggear.service.OrderService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +40,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
 
     @Override
+    @CacheEvict(cacheNames = "product-detail", allEntries = true)
     public OrderResponse createOrder(Long userId, CreateOrderRequest request) {
         Cart cart = getCartForCheckout(userId);
 
@@ -96,6 +98,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @CacheEvict(cacheNames = "product-detail", allEntries = true)
     public OrderResponse cancelOrder(Long userId, Long orderId) {
         Order order = orderRepository.findByIdAndUserId(orderId,userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng"));
@@ -118,6 +121,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @CacheEvict(cacheNames = "product-detail", allEntries = true)
     public OrderResponse updateOrderStatus(Long orderId, UpdateOrderStatusRequest request) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng"));

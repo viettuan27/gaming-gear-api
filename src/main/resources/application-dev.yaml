@@ -15,6 +15,19 @@ spring:
       hibernate:
         format_sql: true
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_HOST_PORT:6380}
+
+  cache:
+    type: redis
+    cache-names:
+      - categories
+      - brands
+      - product-list
+      - product-detail
+
 logging:
   level:
     org.hibernate.SQL: debug
