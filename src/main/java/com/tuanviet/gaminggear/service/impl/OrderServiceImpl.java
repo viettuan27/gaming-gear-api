@@ -14,12 +14,16 @@ import com.tuanviet.gaminggear.entity.order.OrderItem;
 import com.tuanviet.gaminggear.entity.order.OrderStatus;
 import com.tuanviet.gaminggear.entity.order.PaymentMethod;
 import com.tuanviet.gaminggear.exception.BadRequestException;
+import com.tuanviet.gaminggear.exception.ConflictException;
 import com.tuanviet.gaminggear.exception.ResourceNotFoundException;
 import com.tuanviet.gaminggear.mapper.OrderMapper;
+import com.tuanviet.gaminggear.repository.CartItemRepository;
 import com.tuanviet.gaminggear.repository.CartRepository;
 import com.tuanviet.gaminggear.repository.OrderRepository;
 import com.tuanviet.gaminggear.service.OrderService;
 import lombok.RequiredArgsConstructor;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,53 +33,36 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class OrderServiceImpl implements OrderService {
+    private static final long LOCK_WAIT_SECONDS = 5;
 
-    private final CartRepository cartRepository;
+    private final OrderTransactionService orderTransactionService;
     private final OrderRepository orderRepository;
+    private final CartItemRepository cartItemRepository;
     private final OrderMapper orderMapper;
+    private final RedissonClient redissonClient;
 
     @Override
     @CacheEvict(cacheNames = "product-detail", allEntries = true)
     public OrderResponse createOrder(Long userId, CreateOrderRequest request) {
-        Cart cart = getCartForCheckout(userId);
+        List<Long> variantIds = normalizeVariantIds(
+                cartItemRepository.findProductVariantIdsByCartUserId(userId)
+        );
 
-        validateCartItem(cart);
-
-        Order order = new Order();
-        order.setUser(cart.getUser());
-        order.setRecipientName(request.recipientName().trim());
-        order.setRecipientPhone(request.recipientPhone().trim());
-        order.setShippingAddress(request.shippingAddress().trim());
-        order.setNote(request.note() == null ? null : request.note().trim());
-        order.setStatus(OrderStatus.PENDING);
-        order.setPaymentMethod(PaymentMethod.COD);
-
-        BigDecimal totalAmount = BigDecimal.ZERO;
-
-        for(CartItem cartItem: cart.getCartItems()){
-            OrderItem orderItem = createOrderItem(cartItem);
-            order.addOrderItem(orderItem);
-
-            totalAmount = totalAmount.add(orderItem.getLineTotal());
-
-            ProductVariant variant = cartItem.getProductVariant();
-            variant.setStockQuantity(
-                    variant.getStockQuantity() - cartItem.getQuantity()
-            );
-        }
-
-        order.setTotalAmount(totalAmount);
-
-        Order savedOrder = orderRepository.save(order);
-
-        cart.getCartItems().clear();
-
-        return orderMapper.toResponse(savedOrder);
+        return executeWithLocks(
+                getVariantLockNames(variantIds),
+                () ->orderTransactionService.createOrder(
+                        userId,
+                        request,
+                        variantIds
+                ));
     }
 
     @Override
@@ -100,17 +87,20 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @CacheEvict(cacheNames = "product-detail", allEntries = true)
     public OrderResponse cancelOrder(Long userId, Long orderId) {
-        Order order = orderRepository.findByIdAndUserId(orderId,userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng"));
-        if (order.getStatus() != OrderStatus.PENDING){
-            throw new BadRequestException("Chỉ có thể hủy đơn hàng đang chờ xác nhận");
-        }
-        order.setStatus(OrderStatus.CANCELLED);
-        restoreStock(order);
-        return orderMapper.toResponse(order);
+        List<Long> variantId = normalizeVariantIds(
+                orderRepository.findVariantIdsByOrderIdAndUserId(orderId,userId));
+
+        List<String> lockNames = new ArrayList<>();
+        lockNames.add(getOrderLockName(orderId));
+        lockNames.addAll(getVariantLockNames(variantId));
+        return executeWithLocks(
+                lockNames,
+                () -> orderTransactionService.cancelOrder(userId,orderId)
+        );
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResponse<OrderSummaryResponse> getAllOrders(OrderStatus status, int page, int size, String sortDirection) {
         Pageable pageable = createPageable(page, size, sortDirection);
 
@@ -123,79 +113,21 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @CacheEvict(cacheNames = "product-detail", allEntries = true)
     public OrderResponse updateOrderStatus(Long orderId, UpdateOrderStatusRequest request) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng"));
-        OrderStatus currentStatus = order.getStatus();
-        OrderStatus newStatus = request.status();
+        List<String> lockNames = new ArrayList<>();
+        lockNames.add(getOrderLockName(orderId));
 
-        if(!isValidStatusTransition(currentStatus,newStatus)){
-            throw new BadRequestException("Không thể chuyển trạng thái đơn hàng từ " + currentStatus + " sang " + newStatus);
+        if (request.status() == OrderStatus.CANCELLED){
+            List<Long> variantIds = normalizeVariantIds(
+                    orderRepository.findVariantIdsByOrderId(orderId)
+            );
+
+            lockNames.addAll(getVariantLockNames(variantIds));
         }
-        if (newStatus == OrderStatus.CANCELLED){
-            restoreStock(order);
-        }
-        order.setStatus(newStatus);
-        return orderMapper.toResponse(order);
-    }
 
-
-    private Cart getCartForCheckout(Long userId){
-        Cart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new BadRequestException("Giỏ hàng đang trống"));
-        if(cart.getCartItems().isEmpty()){
-            throw new BadRequestException("Giỏ hàng đang trống");
-        }
-        return cart;
-    }
-
-    private void validateCartItem(Cart cart){
-        for(CartItem cartItem: cart.getCartItems()){
-            ProductVariant variant = cartItem.getProductVariant();
-
-            validateProductVariant(variant);
-            validateStock(variant,cartItem.getQuantity());
-        }
-    }
-
-    private void validateProductVariant(ProductVariant variant){
-        Product product = variant.getProduct();
-        if(!variant.isActive()
-                || !product.isActive()
-                || !product.getCategory().isActive()
-                || !product.getBrand().isActive())
-        {
-            throw new BadRequestException("Sản phẩm "+ product.getName() + " hiện không khả dụng");
-        }
-    }
-
-    private void validateStock(ProductVariant variant, int quantity){
-        if(variant.getStockQuantity() == 0){
-            throw new BadRequestException("Sản phẩm đang hết hàng");
-        }
-        if(quantity > variant.getStockQuantity()){
-            throw new BadRequestException("Số lượng còn lại không đủ");
-        }
-    }
-
-
-    private OrderItem createOrderItem(CartItem cartItem) {
-        ProductVariant variant = cartItem.getProductVariant();
-        Product product = variant.getProduct();
-
-        BigDecimal lineTotal = variant.getPrice()
-                .multiply(BigDecimal.valueOf(cartItem.getQuantity()));
-
-        OrderItem orderItem = new OrderItem();
-        orderItem.setVariant(variant);
-        orderItem.setProductName(product.getName());
-        orderItem.setVariantName(variant.getName());
-        orderItem.setSku(variant.getSku());
-        orderItem.setUnitPrice(variant.getPrice());
-        orderItem.setQuantity(cartItem.getQuantity());
-        orderItem.setLineTotal(lineTotal);
-
-        return orderItem;
-
+        return executeWithLocks(
+                lockNames,
+                () -> orderTransactionService.updateOrderStatus(orderId, request)
+        );
     }
 
     private Pageable createPageable(int page, int size, String sortDirection){
@@ -219,25 +151,58 @@ public class OrderServiceImpl implements OrderService {
         );
     }
 
-    private void restoreStock(Order order) {
-        for(OrderItem orderItem : order.getOrderItems()){
-            ProductVariant variant = orderItem.getVariant();
-            variant.setStockQuantity(variant.getStockQuantity() + orderItem.getQuantity());
+
+    private List<Long> normalizeVariantIds(List<Long> variantIds) {
+        return variantIds.stream()
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
+    private String getLockStockName(Long variantId){
+        return "lock:stock:variant:{"+variantId+"}";
+    }
+
+    private String getOrderLockName(Long orderId){
+        return "lock:order:{"+orderId+"}";
+    }
+
+    private List<String> getVariantLockNames(List<Long> variantId){
+        return variantId.stream()
+                .map(this::getLockStockName)
+                .toList();
+    }
+
+    private <T> T executeWithLocks(
+            List<String> lockNames,
+            Supplier<T> action
+    ){
+        List<RLock> locks = lockNames.stream()
+                .distinct()
+                .sorted()
+                .map(redissonClient::getLock)
+                .toList();
+
+        try {
+            for (RLock lock: locks){
+                if(!lock.tryLock(LOCK_WAIT_SECONDS, TimeUnit.SECONDS)){
+                    throw new ConflictException("Sản phẩm đang được xử lý, vui lòng thử lại");
+                }
+            }
+            return action.get();
+        } catch (InterruptedException e){
+            Thread.currentThread().interrupt();
+
+            throw new ConflictException("Yêu cầu đang được xử lý, vui lòng thử lại");
+        } finally {
+            for (int index=locks.size() - 1; index >= 0; index--){
+                RLock lock = locks.get(index);
+                if(lock.isHeldByCurrentThread()){
+                    lock.unlock();
+                }
+            }
         }
     }
 
-    private boolean isValidStatusTransition(
-            OrderStatus currentStatus,
-            OrderStatus newStatus
-    ) {
-        return switch (currentStatus) {
-            case PENDING -> newStatus == OrderStatus.CONFIRMED
-                    || newStatus == OrderStatus.CANCELLED;
-            case CONFIRMED -> newStatus == OrderStatus.SHIPPING
-                    || newStatus == OrderStatus.CANCELLED;
-            case SHIPPING -> newStatus == OrderStatus.DELIVERED;
-            case DELIVERED, CANCELLED -> false;
-        };
-    }
 
 }

@@ -11,26 +11,34 @@ import com.tuanviet.gaminggear.repository.ProductRepository;
 import com.tuanviet.gaminggear.repository.ProductVariantRepository;
 import com.tuanviet.gaminggear.service.ProductVariantService;
 import lombok.RequiredArgsConstructor;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.concurrent.TimeUnit;
+
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class ProductVariantServiceImpl implements ProductVariantService {
+
+    private static final long LOCK_WAIT_SECONDS = 5;
 
     private final ProductRepository productRepository;
     private final ProductVariantRepository productVariantRepository;
     private final ProductVariantMapper productVariantMapper;
+    private final ProductVariantTransactionService productVariantTransactionService;
+    private final RedissonClient redissonClient;
 
     @Override
-    @CacheEvict(cacheNames = "product-detail",allEntries = true)
-    public ProductVariantResponse create(Long productId,ProductVariantRequest request) {
+    @Transactional
+    @CacheEvict(cacheNames = "product-detail", allEntries = true)
+    public ProductVariantResponse create(Long productId, ProductVariantRequest request) {
         Product product = getProductById(productId);
         String sku = request.sku().trim().toUpperCase();
 
-        if (productVariantRepository.existsBySkuIgnoreCase(sku)){
+        if (productVariantRepository.existsBySkuIgnoreCase(sku)) {
             throw new ConflictException("SKU đã tồn tại");
         }
 
@@ -46,29 +54,37 @@ public class ProductVariantServiceImpl implements ProductVariantService {
     }
 
     @Override
-    @CacheEvict(cacheNames = "product-detail",allEntries = true)
+    @CacheEvict(cacheNames = "product-detail", allEntries = true)
     public ProductVariantResponse update(Long variantId, ProductVariantRequest request) {
-        ProductVariant productVariant = getProductVariantById(variantId);
-        String sku = request.sku().trim().toUpperCase();
+        RLock lock = redissonClient.getLock(getStockLockName(variantId));
 
-        if(productVariantRepository.existsBySkuIgnoreCaseAndIdNot(sku,variantId)){
-            throw new ConflictException("SKU đã tồn tại");
+        try {
+            if (!lock.tryLock(LOCK_WAIT_SECONDS, TimeUnit.SECONDS)) {
+                throw new ConflictException(
+                        "Sản phẩm đang được xử lý, vui lòng thử lại"
+                );
+            }
+
+            return productVariantTransactionService.update(variantId, request);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+
+            throw new ConflictException(
+                    "Yêu cầu đang được xử lý, vui lòng thử lại"
+            );
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
         }
-
-        productVariant.setName(request.name().trim());
-        productVariant.setSku(sku);
-        productVariant.setPrice(request.price());
-        productVariant.setStockQuantity(request.stockQuantity());
-        productVariant.setActive(request.active());
-        return  productVariantMapper.toResponse(productVariantRepository.save(productVariant));
     }
 
-    private ProductVariant getProductVariantById(Long id){
-        return productVariantRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phiên bản sản phẩm"));
-    }
-    private Product getProductById(Long id){
-        return productRepository.findById(id)
+    private Product getProductById(Long productId) {
+        return productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
+    }
+
+    private String getStockLockName(Long variantId) {
+        return "lock:stock:variant:{" + variantId + "}";
     }
 }
