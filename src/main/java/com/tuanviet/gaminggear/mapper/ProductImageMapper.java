@@ -2,12 +2,22 @@ package com.tuanviet.gaminggear.mapper;
 
 import com.tuanviet.gaminggear.dto.response.ProductImageResponse;
 import com.tuanviet.gaminggear.entity.catalog.ProductImage;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
+import com.tuanviet.gaminggear.service.FileStorageService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
-@Mapper(componentModel = "spring")
-public interface ProductImageMapper {
+@Component
+@RequiredArgsConstructor
+public class ProductImageMapper {
 
-    @Mapping(target = "productId", source = "product.id")
-    ProductImageResponse toResponse(ProductImage productImage);
+    private final FileStorageService fileStorageService;
+
+    public ProductImageResponse toResponse(ProductImage productImage) {
+        return new ProductImageResponse(
+                productImage.getId(),
+                productImage.getProduct().getId(),
+                fileStorageService.getPublicUrl(productImage.getObjectKey()),
+                productImage.getSortOrder()
+        );
+    }
 }
