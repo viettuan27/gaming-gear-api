@@ -17,8 +17,8 @@ public class ProductImage extends AuditableEntity {
     @JoinColumn(name = "product_id",nullable = false)
     private Product product;
 
-    @Column(name = "image_url",nullable = false, length = 500)
-    private String imageUrl;
+    @Column(name = "object_key",nullable = false, length = 500)
+    private String objectKey;
 
     @Column(name = "sort_order",nullable = false)
     private int sortOrder = 0 ;
