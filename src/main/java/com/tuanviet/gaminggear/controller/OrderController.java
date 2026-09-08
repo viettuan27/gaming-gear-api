@@ -1,5 +1,7 @@
 package com.tuanviet.gaminggear.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.tuanviet.gaminggear.common.ApiResponse;
 import com.tuanviet.gaminggear.dto.request.CreateOrderRequest;
 import com.tuanviet.gaminggear.dto.request.UpdateOrderStatusRequest;
@@ -19,6 +21,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(
+        name = "Đơn hàng",
+        description = "Tạo, theo dõi và quản lý đơn hàng"
+)
 @RestController
 @RequiredArgsConstructor
 @Validated
@@ -26,6 +32,10 @@ public class OrderController {
 
     private final OrderService orderService;
 
+    @Operation(
+            summary = "Tạo đơn hàng từ giỏ hàng",
+            description = "Kiểm tra tồn kho, tạo đơn hàng và trừ tồn kho trong giao dịch được bảo vệ bởi Redisson lock."
+    )
     @PostMapping("/api/v1/orders")
     public ResponseEntity<ApiResponse<OrderResponse>> createOrder(
             @AuthenticationPrincipal CustomUserDetails currentUser,
@@ -37,6 +47,7 @@ public class OrderController {
                         orderService.createOrder(currentUser.getUserId(),request)));
     }
 
+    @Operation(summary = "Lấy lịch sử đơn hàng của tôi")
     @GetMapping("/api/v1/orders/my")
     public ResponseEntity<ApiResponse<PageResponse<OrderSummaryResponse>>> getMyOrders(
             @AuthenticationPrincipal CustomUserDetails currentUser,
@@ -59,6 +70,7 @@ public class OrderController {
                         orderService.getMyOrders(currentUser.getUserId(), page,size,sortDirection)));
     }
 
+    @Operation(summary = "Lấy chi tiết đơn hàng")
     @GetMapping("/api/v1/orders/{orderId}")
     public ResponseEntity<ApiResponse<OrderResponse>> getOrderDetails(
             @AuthenticationPrincipal CustomUserDetails currentUser,
@@ -70,6 +82,7 @@ public class OrderController {
                         orderService.getOrderDetails(currentUser.getUserId(), orderId)));
     }
 
+    @Operation(summary = "Hủy đơn hàng")
     @PutMapping("/api/v1/orders/{orderId}/cancel")
     public ResponseEntity<ApiResponse<OrderResponse>> cancelOrder(
             @AuthenticationPrincipal CustomUserDetails currentUser,
@@ -81,6 +94,7 @@ public class OrderController {
                         orderService.cancelOrder(currentUser.getUserId(), orderId)));
     }
 
+    @Operation(summary = "Lấy danh sách đơn hàng cho quản trị viên")
     @GetMapping("/api/v1/admin/orders")
     public ResponseEntity<ApiResponse<PageResponse<OrderSummaryResponse>>> getAllOrders(
             @RequestParam(required = false) OrderStatus status,
@@ -103,6 +117,7 @@ public class OrderController {
                         orderService.getAllOrders(status, page, size, sortDirection)));
     }
 
+    @Operation(summary = "Cập nhật trạng thái đơn hàng")
     @PutMapping("/api/v1/admin/orders/{orderId}/status")
     public ResponseEntity<ApiResponse<OrderResponse>> updateOrderStatus(
             @PathVariable Long orderId,

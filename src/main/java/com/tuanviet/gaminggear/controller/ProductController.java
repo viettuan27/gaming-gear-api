@@ -1,5 +1,7 @@
 package com.tuanviet.gaminggear.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.tuanviet.gaminggear.common.ApiResponse;
 import com.tuanviet.gaminggear.dto.request.ProductRequest;
 import com.tuanviet.gaminggear.dto.response.PageResponse;
@@ -15,12 +17,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(
+        name = "Danh mục sản phẩm",
+        description = "Quản lý và tra cứu sản phẩm"
+)
 @RestController
 @RequiredArgsConstructor
 @Validated
 public class ProductController {
     private final ProductService productService;
 
+    @Operation(summary = "Tạo sản phẩm mới")
     @PostMapping("/api/v1/admin/products")
     public ResponseEntity<ApiResponse<ProductResponse>> create(@Valid @RequestBody ProductRequest request){
 
@@ -28,6 +35,7 @@ public class ProductController {
                 .body(ApiResponse.success("Tạo sản phẩm thành công", productService.create(request)));
     }
 
+    @Operation(summary = "Cập nhật sản phẩm")
     @PutMapping("/api/v1/admin/products/{id}")
     public ResponseEntity<ApiResponse<ProductResponse>> update(@PathVariable Long id, @Valid @RequestBody ProductRequest request){
         return ResponseEntity.ok(
@@ -35,11 +43,13 @@ public class ProductController {
         );
     }
 
+    @Operation(summary = "Lấy chi tiết sản phẩm")
     @GetMapping("/api/v1/products/{id}")
     public ResponseEntity<ApiResponse<ProductDetailsResponse>> getDetails(@PathVariable Long id){
         return ResponseEntity.ok()
                 .body(ApiResponse.success("Chi tiết sản phẩm",productService.getDetail(id)));
     }
+    @Operation(summary = "Lấy danh sách sản phẩm có phân trang")
     @GetMapping("/api/v1/products")
     public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> getAllProducts(
             @RequestParam(required = false)

@@ -1,5 +1,7 @@
 package com.tuanviet.gaminggear.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.tuanviet.gaminggear.common.ApiResponse;
 import com.tuanviet.gaminggear.dto.request.BrandRequest;
 import com.tuanviet.gaminggear.dto.response.BrandResponse;
@@ -12,11 +14,16 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Tag(
+        name = "Danh mục sản phẩm",
+        description = "Quản lý và tra cứu thương hiệu"
+)
 @RestController
 @RequiredArgsConstructor
 public class BrandController {
     private final BrandService brandService;
 
+    @Operation(summary = "Lấy danh sách thương hiệu đang hoạt động")
     @GetMapping("/api/v1/brands")
     public ResponseEntity<ApiResponse<List<BrandResponse>>> getAllActive(){
         return ResponseEntity.ok(ApiResponse.success(
@@ -25,6 +32,7 @@ public class BrandController {
         ));
     }
 
+    @Operation(summary = "Lấy toàn bộ thương hiệu")
     @GetMapping("/api/v1/admin/brands")
     public ResponseEntity<ApiResponse<List<BrandResponse>>> getAll(){
         return ResponseEntity.ok(ApiResponse.success(
@@ -33,6 +41,7 @@ public class BrandController {
         ));
     }
 
+    @Operation(summary = "Tạo thương hiệu mới")
     @PostMapping("/api/v1/admin/brands")
     public ResponseEntity<ApiResponse<BrandResponse>> create(@Valid @RequestBody BrandRequest request){
         return ResponseEntity
@@ -40,6 +49,7 @@ public class BrandController {
                 .body(ApiResponse.success("Tạo thương hiệu thành công", brandService.create(request)));
     }
 
+    @Operation(summary = "Cập nhật thương hiệu")
     @PutMapping("/api/v1/admin/brands/{id}")
     public ResponseEntity<ApiResponse<BrandResponse>> update(@PathVariable Long id, @Valid @RequestBody BrandRequest request){
         return ResponseEntity.ok(

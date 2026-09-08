@@ -1,5 +1,7 @@
 package com.tuanviet.gaminggear.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.tuanviet.gaminggear.common.ApiResponse;
 import com.tuanviet.gaminggear.dto.response.ProductImageResponse;
 import com.tuanviet.gaminggear.service.ProductImageService;
@@ -12,6 +14,10 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+@Tag(
+        name = "Danh mục sản phẩm",
+        description = "Quản lý hình ảnh sản phẩm"
+)
 @RestController
 @RequiredArgsConstructor
 @Validated
@@ -19,6 +25,7 @@ public class ProductImageController {
 
     private final ProductImageService productImageService;
 
+    @Operation(summary = "Tải ảnh cho sản phẩm")
     @PostMapping(
             value = "/api/v1/admin/products/{productId}/images",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
@@ -38,6 +45,7 @@ public class ProductImageController {
         );
     }
 
+    @Operation(summary = "Cập nhật ảnh sản phẩm")
     @PutMapping(
             value = "/api/v1/admin/images/{imageId}",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
@@ -57,6 +65,7 @@ public class ProductImageController {
         );
     }
 
+    @Operation(summary = "Xóa ảnh sản phẩm")
     @DeleteMapping("/api/v1/admin/images/{imageId}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long imageId) {
         productImageService.delete(imageId);

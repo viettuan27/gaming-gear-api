@@ -32,6 +32,10 @@ services:
   minio_gaming:
     image: minio/minio:RELEASE.2025-07-23T15-54-02Z
     container_name: minio_gaming
+    networks:
+      default:
+        aliases:
+          - minio-gaming
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -41,6 +45,43 @@ services:
       - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_gaming:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  api_gaming:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gaming_gear_api
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      POSTGRES_HOST: postgres_gaming
+      POSTGRES_HOST_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis_gaming
+      REDIS_HOST_PORT: 6379
+      JWT_SECRET_BASE64: ${JWT_SECRET_BASE64}
+      MINIO_ENDPOINT: http://minio-gaming:9000
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+    ports:
+      - "${APP_HOST_PORT:-8080}:8080"
+    depends_on:
+      postgres_gaming:
+        condition: service_healthy
+      redis_gaming:
+        condition: service_healthy
+      minio_gaming:
+        condition: service_healthy
     restart: unless-stopped
 
 

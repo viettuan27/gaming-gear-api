@@ -1,5 +1,7 @@
 package com.tuanviet.gaminggear.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.tuanviet.gaminggear.common.ApiResponse;
 import com.tuanviet.gaminggear.dto.request.BannerRequest;
 import com.tuanviet.gaminggear.dto.response.BannerResponse;
@@ -16,6 +18,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
+@Tag(
+        name = "CMS",
+        description = "Quản lý banner, trang nội dung và bài viết"
+)
 @RestController
 @RequiredArgsConstructor
 @Validated
@@ -23,6 +29,7 @@ public class BannerController {
 
     private final BannerService bannerService;
 
+    @Operation(summary = "Tạo banner mới")
     @PostMapping(value = "/api/v1/admin/cms/banners", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<BannerResponse>> create(
             @Valid @ModelAttribute BannerRequest request,
@@ -32,6 +39,7 @@ public class BannerController {
                 .body(ApiResponse.success("Tạo banner thành công", bannerService.create(request, file)));
     }
 
+    @Operation(summary = "Cập nhật banner")
     @PutMapping(value = "/api/v1/admin/cms/banners/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<BannerResponse>> update(
             @PathVariable Long id,
@@ -42,6 +50,7 @@ public class BannerController {
                 ApiResponse.success("Cập nhật banner thành công", bannerService.update(id, request, file)));
     }
 
+    @Operation(summary = "Xuất bản banner")
     @PatchMapping("/api/v1/admin/cms/banners/{id}/publish")
     public ResponseEntity<ApiResponse<BannerResponse>> publish(
             @PathVariable Long id
@@ -50,24 +59,28 @@ public class BannerController {
                 ApiResponse.success("Xuất bản banner thành công", bannerService.publish(id)));
     }
 
+    @Operation(summary = "Gỡ xuất bản banner")
     @PatchMapping("/api/v1/admin/cms/banners/{id}/unpublish")
     public ResponseEntity<ApiResponse<BannerResponse>> unpublish(@PathVariable Long id) {
         return ResponseEntity.ok(
                 ApiResponse.success("Gỡ xuất bản banner thành công", bannerService.unpublish(id)));
     }
 
+    @Operation(summary = "Lưu trữ banner")
     @PatchMapping("/api/v1/admin/cms/banners/{id}/archive")
     public ResponseEntity<ApiResponse<BannerResponse>> archive(@PathVariable Long id) {
         return ResponseEntity.ok(
                 ApiResponse.success("Lưu trữ banner thành công", bannerService.archive(id)));
     }
 
+    @Operation(summary = "Khôi phục banner")
     @PatchMapping("/api/v1/admin/cms/banners/{id}/restore")
     public ResponseEntity<ApiResponse<BannerResponse>> restore(@PathVariable Long id) {
         return ResponseEntity.ok(
                 ApiResponse.success("Khôi phục banner thành công", bannerService.restore(id)));
     }
 
+    @Operation(summary = "Xóa banner")
     @DeleteMapping("/api/v1/admin/cms/banners/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         bannerService.delete(id);
@@ -77,18 +90,21 @@ public class BannerController {
         );
     }
 
+    @Operation(summary = "Lấy chi tiết banner cho quản trị viên")
     @GetMapping("/api/v1/admin/cms/banners/{id}")
     public ResponseEntity<ApiResponse<BannerResponse>> getById(@PathVariable Long id) {
         return ResponseEntity.ok(
                 ApiResponse.success("Lấy chi tiết banner thành công", bannerService.getById(id)));
     }
 
+    @Operation(summary = "Lấy toàn bộ banner cho quản trị viên")
     @GetMapping("/api/v1/admin/cms/banners")
     public ResponseEntity<ApiResponse<List<BannerResponse>>> getAll() {
         return ResponseEntity.ok(
                 ApiResponse.success("Lấy danh sách banner thành công", bannerService.getAll()));
     }
 
+    @Operation(summary = "Lấy banner đã xuất bản theo vị trí")
     @GetMapping("/api/v1/banners")
     public ResponseEntity<ApiResponse<List<BannerResponse>>> getPublishedByPosition(@RequestParam BannerPosition position) {
         return ResponseEntity.ok(
