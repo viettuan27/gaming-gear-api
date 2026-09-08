@@ -1,34 +1,43 @@
-# Gaming Gear API
+# 🎮 Gaming Gear API
 
-Backend REST API cho một hệ thống e-commerce bán Gaming Gear. Đây là dự án học tập cá nhân, được xây dựng để thực hành quy trình làm một backend Spring Boot từ thiết kế database, xác thực, nghiệp vụ đặt hàng đến cache, xử lý đồng thời, lưu trữ ảnh và CMS.
+> A RESTful backend for a Gaming Gear e-commerce platform, built with Java 21 and Spring Boot 4.1. The project focuses on core backend functionalities, including authentication, product catalog management, shopping cart, order processing, concurrency handling, image storage, and CMS.
 
-## Chức năng chính
+## ✨ Features
 
-- Xác thực bằng JWT: đăng ký, đăng nhập, refresh token và đăng xuất.
-- Phân quyền `CUSTOMER` và `ADMIN`.
-- Quản lý category, brand, product, product variant và product image.
-- Danh sách sản phẩm có lọc theo category/brand/từ khóa, phân trang và sắp xếp.
-- Giỏ hàng: thêm, cập nhật số lượng, xóa item và xóa toàn bộ giỏ hàng.
-- Đặt hàng COD từ giỏ hàng, xem lịch sử đơn hàng, hủy đơn và quản lý trạng thái đơn hàng.
-- Redis cache cho catalog và dữ liệu CMS; cache được xóa khi dữ liệu liên quan thay đổi.
-- Redisson lock bảo vệ tồn kho khi checkout, hủy đơn hoặc cập nhật variant để tránh overselling và lost update.
-- MinIO lưu ảnh cho product, banner và bài viết; database chỉ lưu object key.
-- CMS cho banner, static page và article với vòng đời `DRAFT`, `PUBLISHED`, `ARCHIVED`.
-- Swagger UI để khám phá và gọi API.
+* **Authentication & authorization:** Registration, login, token refresh, logout, and role-based authorization with `CUSTOMER` / `ADMIN` using JWT.
+* **Catalog:** Manage categories, brands, products, variants, and images. Product listing supports search, filtering, pagination, and sorting.
+* **Cart & order:** Add, update, and remove cart items, COD checkout, order history, order cancellation, and order status management.
+* **Redis cache:** Caches categories, brands, product lists/details, and CMS data. Related cache entries are invalidated whenever the underlying data changes.
+* **Redisson lock:** Protects inventory during checkout, order cancellation, and variant updates, reducing the risk of overselling and lost updates.
+* **MinIO:** Stores images for products, banners, and articles. The database stores only the corresponding `objectKey`.
+* **CMS:** Manage banners, static pages, and articles with the lifecycle states `DRAFT`, `PUBLISHED`, and `ARCHIVED`.
+* **API documentation:** Swagger UI provides API documentation and an interactive environment for testing endpoints directly.
 
-## Kiến trúc tổng quát
+## 🧰 Tech Stack
+
+| Category             | Technology                                        |
+| -------------------- | ------------------------------------------------- |
+| Backend              | Java 21, Spring Boot 4.1.0, Gradle                |
+| Database             | PostgreSQL 17, Spring Data JPA, Hibernate, Flyway |
+| Security             | Spring Security, JJWT, BCrypt                     |
+| Cache & concurrency  | Redis 7, Spring Cache, Redisson 4.7.0             |
+| Object storage       | MinIO 9.0.1                                       |
+| API documentation    | springdoc-openapi / Swagger UI                    |
+| Supporting libraries | Lombok, MapStruct                                 |
+| Local infrastructure | Docker Compose                                    |
+
+## 🏗️ High-Level Architecture
 
 ```mermaid
 flowchart LR
-    Client[Client / Swagger UI] --> API[Spring Boot API]
-    API --> DB[(PostgreSQL)]
-    API --> Redis[(Redis\nCache + Redisson Lock)]
-    API --> MinIO[(MinIO\nObject Storage)]
+    C[Client / Swagger UI] --> A[Spring Boot API]
+    A --> P[(PostgreSQL)]
+    A --> R[(Redis)]
+    A --> M[(MinIO)]
+    R --- L[Spring Cache / Redisson Lock]
 ```
 
-### Một vài luồng đáng chú ý
-
-#### Checkout an toàn với Redisson lock
+## 🔒 Checkout and Inventory Flow
 
 ```mermaid
 sequenceDiagram
@@ -39,32 +48,25 @@ sequenceDiagram
     participant D as PostgreSQL
 
     C->>A: POST /api/v1/orders
-    A->>D: Lấy giỏ hàng và variant IDs
-    A->>R: Khóa các variant theo thứ tự cố định
-    alt Khóa thành công
-        A->>D: Transaction: kiểm tra stock, tạo order, trừ stock, xóa giỏ
-        D-->>A: Commit thành công
-        A->>R: Giải phóng lock trong finally
+    A->>D: Load cart and variant IDs
+    A->>R: Lock variants in ID order
+    alt Lock acquired
+        A->>D: Validate stock, create order, deduct stock, clear cart
+        D-->>A: Commit transaction
+        A->>R: Release locks in finally block
         A-->>C: 201 Created
-    else Không lấy được lock
+    else Lock acquisition failed
         A-->>C: 409 Conflict
     end
 ```
 
-Lock được lấy theo thứ tự cố định để giảm nguy cơ deadlock; khối `finally` bảo đảm lock đã lấy luôn được giải phóng khi transaction thành công hoặc thất bại.
+Locks are acquired in a fixed order to reduce the risk of deadlocks. Every acquired lock is released in a `finally` block.
 
-**Upload ảnh**
-
-1. Admin gửi `multipart/form-data`.
-2. Backend kiểm tra file ảnh và dung lượng.
-3. File được lưu tại MinIO; database chỉ lưu `objectKey`.
-4. Response tạo public URL từ `MINIO_PUBLIC_URL` để client hiển thị ảnh.
-
-**CMS**
+## 📝 CMS Content Lifecycle
 
 ```mermaid
 stateDiagram-v2
-    [*] --> DRAFT: Tạo nội dung
+    [*] --> DRAFT: Create content
     DRAFT --> PUBLISHED: Publish
     PUBLISHED --> DRAFT: Unpublish
     DRAFT --> ARCHIVED: Archive
@@ -72,166 +74,118 @@ stateDiagram-v2
     ARCHIVED --> DRAFT: Restore
 ```
 
-Áp dụng chung cho banner, static page và article. Public API chỉ trả về nội dung `PUBLISHED`.
+This lifecycle is shared by banners, static pages, and articles. Public APIs only return content with the `PUBLISHED` status.
 
-## Công nghệ sử dụng
+## 🚀 Running the Project
 
-| Nhóm | Công nghệ |
-| --- | --- |
-| Ngôn ngữ / Framework | Java 21, Spring Boot 4.1, Gradle |
-| Web / Validation | Spring Web MVC, Jakarta Validation |
-| Security | Spring Security, JWT, BCrypt |
-| Database | PostgreSQL 17, Spring Data JPA, Hibernate, Flyway |
-| Cache / Concurrent | Redis 7, Spring Cache, Redisson |
-| Object storage | MinIO |
-| API documentation | springdoc-openapi / Swagger UI |
-| Hỗ trợ code | Lombok, MapStruct |
-| Local infrastructure | Docker Compose |
+### Requirements
 
-## Cấu trúc source chính
+* JDK 21
+* Docker Desktop
+* Git
 
-```text
-src/main/java/com/tuanviet/gaminggear
-├── common/       # ApiResponse dùng chung
-├── config/       # Security, Redis, Redisson, MinIO, Swagger
-├── controller/   # REST endpoints
-├── dto/          # Request và response DTO
-├── entity/       # JPA entities
-├── exception/    # Custom exception và GlobalExceptionHandler
-├── mapper/       # Chuyển đổi entity <-> DTO
-├── repository/   # Spring Data JPA repositories
-├── security/     # JWT filter và UserDetails
-└── service/      # Business logic
-```
+PostgreSQL, Redis, and MinIO are provided through Docker Compose, so you do not need to install these services directly on the host machine.
 
-## Yêu cầu trước khi chạy
+### 1. Configure the Environment
 
-- JDK 21.
-- Docker Desktop đang chạy.
-- Git.
-
-Không cần cài PostgreSQL, Redis hoặc MinIO trực tiếp trên máy vì Docker Compose sẽ chạy ba service này.
-
-## Cấu hình biến môi trường
-
-Tạo file `.env` từ file mẫu:
+Create a `.env` file from the provided example:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Không commit file `.env`. File này chứa mật khẩu local và JWT secret; `.gitignore` đã bỏ qua nó.
+The main environment variables include `POSTGRES_*`, `JWT_SECRET_BASE64`, `REDIS_*`, and `MINIO_*`.
 
-Các biến quan trọng:
+The `.env` file contains local configuration and must not be committed to version control.
 
-| Biến | Mục đích |
-| --- | --- |
-| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Kết nối PostgreSQL |
-| `JWT_SECRET_BASE64` | Khóa ký JWT, phải là chuỗi Base64 hợp lệ |
-| `REDIS_HOST`, `REDIS_HOST_PORT` | Kết nối Redis khi chạy backend trên máy |
-| `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | Tài khoản quản trị MinIO local |
-| `MINIO_ENDPOINT` | Endpoint MinIO khi chạy backend trên máy |
-| `MINIO_PUBLIC_URL` | URL được trả về cho client để hiển thị ảnh |
-| `APP_HOST_PORT` | Port của API khi chạy toàn bộ bằng Docker Compose |
-
-Giá trị `JWT_SECRET_BASE64` trong `.env.example` chỉ là ví dụ để chạy local. Khi deploy, hãy thay bằng secret ngẫu nhiên. Có thể tạo một chuỗi Base64 32 byte bằng PowerShell:
-
-```powershell
-$bytes = New-Object byte[] 32
-$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-$rng.GetBytes($bytes)
-[Convert]::ToBase64String($bytes)
-```
-
-## Chạy toàn bộ bằng Docker
-
-Đây là cách gần với môi trường deploy nhất: API, PostgreSQL, Redis và MinIO cùng chạy trong Docker.
-
-Docker Compose tự cấu hình API container kết nối nội bộ tới PostgreSQL, Redis và MinIO. Vì vậy các host port như `5436` hay `6380` chỉ phục vụ việc truy cập từ máy của em, không phải địa chỉ mà API container dùng.
+### 2. Start the Entire Stack with Docker Compose
 
 ```powershell
 docker compose up --build -d
 docker compose ps
 ```
 
-Lần build đầu tiên có thể mất vài phút vì Docker cần tải Java image và Gradle dependencies. Khi API đã khởi động, truy cập:
+| Service          | Local Address                               |
+| ---------------- | ------------------------------------------- |
+| API / Swagger UI | http://localhost:8080/swagger-ui/index.html |
+| OpenAPI JSON     | http://localhost:8080/v3/api-docs           |
+| MinIO Console    | http://localhost:9001                       |
+| PostgreSQL       | `localhost:5436`                            |
+| Redis            | `localhost:6380`                            |
 
-| Service | URL |
-| --- | --- |
-| Swagger UI | http://localhost:8080/swagger-ui/index.html |
-| OpenAPI JSON | http://localhost:8080/v3/api-docs |
-| MinIO Console | http://localhost:9001 |
-| PostgreSQL | `localhost:5436` |
-| Redis | `localhost:6380` |
-
-Xem log của backend khi cần debug:
+View API logs:
 
 ```powershell
 docker compose logs -f api_gaming
 ```
 
-> Nếu đang chạy `bootRun` trên máy, hãy dừng nó trước khi chạy full Docker vì cả hai đều dùng port `8080`.
+> Stop `bootRun` before starting Docker Compose because both use port `8080`.
 
-## Chạy backend trên máy, infrastructure bằng Docker
-
-Cách này phù hợp khi code và debug trong IDE:
+### Run the API Locally with Infrastructure in Docker
 
 ```powershell
 docker compose up -d postgres_gaming redis_gaming minio_gaming
 .\gradlew.bat bootRun
 ```
 
-Backend sẽ đọc `.env` và kết nối tới `localhost:5436`, `localhost:6380`, `localhost:9000`.
-
-Kiểm tra build trước khi push:
+Verify the build:
 
 ```powershell
 .\gradlew.bat build
 ```
 
-## Swagger và phân quyền
+## 📚 Swagger and Authorization
 
-Swagger UI có tại:
+Swagger UI: http://localhost:8080/swagger-ui/index.html
+
+Authentication flow in Swagger:
+
+1. Call `POST /api/v1/auth/login` to obtain an `accessToken`.
+2. Click **Authorize** and paste the access token.
+3. Swagger automatically adds the `Bearer` prefix to requests that require authentication.
+
+All endpoints under `/api/v1/admin/**` require the `ADMIN` role.
+
+## 🗂️ Source Structure
 
 ```text
-http://localhost:8080/swagger-ui/index.html
+src/main/java/com/tuanviet/gaminggear
+├── common/       # Shared ApiResponse
+├── config/       # Security, Redis, Redisson, MinIO, Swagger
+├── controller/   # REST endpoints
+├── dto/          # Request and response DTOs
+├── entity/       # JPA entities
+├── exception/    # Custom exceptions and GlobalExceptionHandler
+├── mapper/       # Entity <-> DTO mapping
+├── repository/   # Spring Data JPA repositories
+├── security/     # JWT filter and UserDetails
+└── service/      # Business logic
 ```
 
-Đăng nhập qua `POST /api/v1/auth/login`, copy `accessToken`, bấm **Authorize** trong Swagger và dán token thô. Swagger sẽ tự thêm tiền tố `Bearer`.
+## 🌱 Demo Data
 
-Các API dưới `/api/v1/admin/**` yêu cầu quyền `ADMIN`. Khi đăng ký qua API, user mới mặc định nhận quyền `CUSTOMER`; để thử admin API ở local, gán thêm quyền `ADMIN` cho user trong database.
+The `scripts/seed_demo_catalog.sql` script generates demo catalog data including 5 categories, 12 brands, 330 products, and 339 variants.
 
-## Các nhóm API
+> Warning: This script is intended for local development only. It deletes existing business data, including users, carts, orders, catalog data, and CMS content. The `roles` table and Flyway migration history are preserved.
 
-| Nhóm | Base path |
-| --- | --- |
-| Authentication | `/api/v1/auth` |
-| Public catalog | `/api/v1/categories`, `/api/v1/brands`, `/api/v1/products` |
-| Cart | `/api/v1/cart` |
-| Order | `/api/v1/orders` |
-| Public CMS | `/api/v1/banners`, `/api/v1/pages`, `/api/v1/articles` |
-| Admin | `/api/v1/admin/**` |
-
-Danh sách endpoint, request body và response đầy đủ được hiển thị trực tiếp trên Swagger UI.
-
-## Dừng hoặc reset môi trường Docker
-
-Dừng containers nhưng giữ database và file MinIO:
+After the Docker containers have started, run the following command from the project root:
 
 ```powershell
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+Get-Content -Raw scripts/seed_demo_catalog.sql |
+  docker compose exec -T postgres_gaming sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
+Product model names are based on publicly available catalogs from GEARVN. Prices, inventory quantities, and descriptions are demo data.
+
+The script does not download or copy images from third-party sources.
+
+## 🧹 Stop or Reset the Docker Environment
+
+```powershell
+# Stop containers while preserving PostgreSQL data and MinIO files
 docker compose down
-```
 
-Reset toàn bộ dữ liệu local:
-
-```powershell
+# Remove all local PostgreSQL and MinIO volume data
 docker compose down -v
 ```
-
-> Lệnh có `-v` xóa PostgreSQL volume và MinIO volume. Chỉ dùng khi em thực sự muốn xóa dữ liệu local.
-
-## Phạm vi hiện tại
-
-- Backend API, chưa có frontend.
-- Thanh toán hiện tại là COD.
-- Có thể mở rộng tiếp bằng dashboard admin, voucher hoặc tích hợp cổng thanh toán online.
