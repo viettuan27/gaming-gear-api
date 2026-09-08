@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -70,7 +71,7 @@ public class BrandServiceImpl implements BrandService {
         return brandRepository.findByActiveTrueOrderByNameAsc()
                 .stream()
                 .map(brandMapper::toResponse)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     private Brand getBrandById(Long id) {
