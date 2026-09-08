@@ -1,5 +1,7 @@
 package com.tuanviet.gaminggear.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.tuanviet.gaminggear.common.ApiResponse;
 import com.tuanviet.gaminggear.dto.request.LoginRequest;
 import com.tuanviet.gaminggear.dto.request.RefreshTokenRequest;
@@ -15,6 +17,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(
+        name = "Xác thực",
+        description = "Đăng ký, đăng nhập, làm mới token và đăng xuất"
+)
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
@@ -22,6 +28,7 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @Operation(summary = "Đăng ký tài khoản khách hàng")
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(
             @Valid @RequestBody RegisterRequest request
@@ -32,6 +39,7 @@ public class AuthController {
                 .body(ApiResponse.success("Đăng ký thành công", response));
     }
 
+    @Operation(summary = "Đăng nhập và nhận access token")
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(
             @Valid @RequestBody LoginRequest request
@@ -43,6 +51,7 @@ public class AuthController {
         );
     }
 
+    @Operation(summary = "Làm mới access token")
     @PostMapping("/refresh-token")
     public ResponseEntity<ApiResponse<AuthResponse>> refreshToken(
             @Valid @RequestBody RefreshTokenRequest request
@@ -54,6 +63,7 @@ public class AuthController {
         );
     }
 
+    @Operation(summary = "Đăng xuất và vô hiệu hóa refresh token")
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
             @Valid @RequestBody RefreshTokenRequest request
