@@ -28,12 +28,30 @@ flowchart LR
 
 ### Một vài luồng đáng chú ý
 
-**Checkout an toàn với tồn kho**
+#### Checkout an toàn với Redisson lock
 
-1. Backend lấy các product variant trong giỏ hàng.
-2. Redisson khóa các variant theo thứ tự cố định.
-3. Transaction kiểm tra tồn kho, tạo `Order`/`OrderItem`, trừ stock và xóa giỏ hàng.
-4. Backend giải phóng lock, kể cả khi có lỗi.
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Customer
+    participant A as Spring Boot API
+    participant R as Redis / Redisson
+    participant D as PostgreSQL
+
+    C->>A: POST /api/v1/orders
+    A->>D: Lấy giỏ hàng và variant IDs
+    A->>R: Khóa các variant theo thứ tự cố định
+    alt Khóa thành công
+        A->>D: Transaction: kiểm tra stock, tạo order, trừ stock, xóa giỏ
+        D-->>A: Commit thành công
+        A->>R: Giải phóng lock trong finally
+        A-->>C: 201 Created
+    else Không lấy được lock
+        A-->>C: 409 Conflict
+    end
+```
+
+Lock được lấy theo thứ tự cố định để giảm nguy cơ deadlock; khối `finally` bảo đảm lock đã lấy luôn được giải phóng khi transaction thành công hoặc thất bại.
 
 **Upload ảnh**
 
@@ -44,7 +62,17 @@ flowchart LR
 
 **CMS**
 
-Admin tạo hoặc cập nhật nội dung ở trạng thái `DRAFT`, sau đó xuất bản. Public API chỉ trả về nội dung `PUBLISHED`.
+```mermaid
+stateDiagram-v2
+    [*] --> DRAFT: Tạo nội dung
+    DRAFT --> PUBLISHED: Publish
+    PUBLISHED --> DRAFT: Unpublish
+    DRAFT --> ARCHIVED: Archive
+    PUBLISHED --> ARCHIVED: Archive
+    ARCHIVED --> DRAFT: Restore
+```
+
+Áp dụng chung cho banner, static page và article. Public API chỉ trả về nội dung `PUBLISHED`.
 
 ## Công nghệ sử dụng
 
