@@ -164,9 +164,9 @@ src/main/java/com/tuanviet/gaminggear
 
 ## 🌱 Demo Data
 
-The `scripts/seed_demo_catalog.sql` script generates demo catalog data including 5 categories, 12 brands, 330 products, and 339 variants.
+The `scripts/seed_demo_catalog.sql` script generates demo data including 5 categories, 12 brands, 330 products, 339 variants, and two test accounts.
 
-> Warning: This script is intended for local development only. It deletes existing business data, including users, carts, orders, catalog data, and CMS content. The `roles` table and Flyway migration history are preserved.
+> Warning: This script is intended for local development only. It deletes existing business data, including users, carts, orders, catalog data, and CMS content. The `roles` table and Flyway migration history are preserved. Running it replaces existing users with the two demo accounts below.
 
 After the Docker containers have started, run the following command from the project root:
 
@@ -179,6 +179,17 @@ Get-Content -Raw scripts/seed_demo_catalog.sql |
 Product model names are based on publicly available catalogs from GEARVN. Prices, inventory quantities, and descriptions are demo data.
 
 The script does not download or copy images from third-party sources.
+
+### Demo Accounts
+
+After running the seed script, use these accounts in Swagger UI or the frontend:
+
+| Role | Email | Password |
+| --- | --- | --- |
+| `CUSTOMER` | `user@gmail.com` | `123456789` |
+| `ADMIN` | `admin@gmail.com` | `123456789` |
+
+The passwords are stored as BCrypt hashes in the SQL script. These accounts are for local demo purposes only and must not be used in a production environment.
 
 ## 🧹 Stop or Reset the Docker Environment
 
