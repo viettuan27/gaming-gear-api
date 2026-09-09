@@ -4,6 +4,7 @@ import com.tuanviet.gaminggear.entity.cms.ContentStatus;
 import com.tuanviet.gaminggear.entity.cms.StaticPage;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface StaticPageRepository extends JpaRepository<StaticPage, Long> {
@@ -16,4 +17,6 @@ public interface StaticPageRepository extends JpaRepository<StaticPage, Long> {
             String slug,
             ContentStatus status
     );
+
+    List<StaticPage> findByStatusOrderByUpdatedAtDesc(ContentStatus status);
 }

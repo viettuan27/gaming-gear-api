@@ -152,6 +152,15 @@ public class StaticPageServiceImpl implements StaticPageService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<StaticPageResponse> getPublishedPages() {
+        return staticPageRepository.findByStatusOrderByUpdatedAtDesc(ContentStatus.PUBLISHED)
+                .stream()
+                .map(staticPageMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     @Cacheable(cacheNames = "cms-pages",key = "#slug.trim().toLowerCase()")
     public StaticPageResponse getPublishedBySlug(String slug) {
         String normalizeSlug = normalizeSlug(slug);

@@ -25,5 +25,7 @@ public interface StaticPageService {
 
     List<StaticPageResponse> getAll();
 
+    List<StaticPageResponse> getPublishedPages();
+
     StaticPageResponse getPublishedBySlug(String slug);
 }

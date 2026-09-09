@@ -161,7 +161,6 @@ public class BannerServiceImpl implements BannerService {
     }
 
     @Override
-    @Cacheable(cacheNames = "cms-banners",key = "#position.name()")
     public List<BannerResponse> getPublishedByPosition(BannerPosition position) {
         return bannerRepository.findByPositionAndStatusOrderBySortOrderAscIdAsc(position,ContentStatus.PUBLISHED)
                 .stream()

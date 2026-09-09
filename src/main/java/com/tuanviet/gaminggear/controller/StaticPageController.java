@@ -92,6 +92,13 @@ public class StaticPageController {
                 ApiResponse.success("Lấy danh sách trang nội dung thành công", staticPageService.getAll()));
     }
 
+    @Operation(summary = "Lấy danh sách trang nội dung đã xuất bản")
+    @GetMapping("/api/v1/pages")
+    public ResponseEntity<ApiResponse<List<StaticPageResponse>>> getPublishedPages() {
+        return ResponseEntity.ok(
+                ApiResponse.success("Lấy danh sách trang nội dung thành công", staticPageService.getPublishedPages()));
+    }
+
     @Operation(summary = "Lấy trang nội dung đã xuất bản theo slug")
     @GetMapping("/api/v1/pages/{slug}")
     public ResponseEntity<ApiResponse<StaticPageResponse>> getPublishedBySlug(@PathVariable String slug) {
